@@ -84,8 +84,8 @@ module.exports = function(grunt) {
 				},
 				build: {
 					files:  {},
-					src:    'ly.js',
-					dest:   'ly.min.js'
+					src:    'ngBlockly.js',
+					dest:   'ngBlockly.min.js'
 				}
 			},
 			less: {
@@ -94,14 +94,14 @@ module.exports = function(grunt) {
 					},
 					files: {
 						"main.css": "_base.less",
-						"ly.css": "_ly.less"
+						"ngBlockly.css": "_ngBlockly.less"
 					}
 				}
 			},
 			cssmin: {
 				dev: {
-					src: ['ly.css'],
-					dest: 'ly.min.css'
+					src: ['ngBlockly.css'],
+					dest: 'ngBlockly.min.css'
 				}
 			}/*,
 			karma: {

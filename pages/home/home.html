@@ -1,3 +1,18 @@
 <div ng-controller='HomeCtrl'>	
+    <xml id="toolbox" style="display: none">
+  <category name="Control">
+    <block type="controls_if"></block>
+    <block type="controls_whileUntil"></block>
+    <block type="controls_for">
+  </category>
+  <category name="Logic">
+    <block type="logic_compare"></block>
+    <block type="logic_operation"></block>
+    <block type="logic_boolean"></block>
+  </category>
+</xml>
 	<!-- TODO: place directive call here -->
+    <ng-blockly  id="blocklyDiv"></ng-blockly>
+    
+    <!--<div id="blocklyDiv" style="height:100%" class="ng-blockly" ng-blockly></div>-->
 </div>

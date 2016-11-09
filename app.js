@@ -7,7 +7,7 @@
 
 angular.module('myApp', [
 'ngRoute', 'ngSanitize', 'ngTouch', 'ngAnimate',		//additional angular modules
-'Ambert Jean-Christophe.ngBlockly'
+'angular-blockly'
 ]).
 config(['$routeProvider', '$locationProvider', '$compileProvider', function($routeProvider, $locationProvider, $compileProvider) {
 	/**
