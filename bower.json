@@ -1,13 +1,11 @@
 {
-	"name": "ngBlockly",
-	"version": "1.0.0",
+	"name": "ngBlockly-demo",
+	"version": "0.0.0",
 	"authors": [
 		"Ambert Jean-Christophe jc.ambert@free.Fr"
 	],
-	"description": "Blockly under Angular",
+	"description": "Demo",
 	"keywords": [
-		"angular",
-		"blockly"
 	],
 	"license": "MIT",
 	"ignore": [
@@ -21,7 +19,8 @@
 		"angular":"~1.2.0",
 		"angular-animate":"~1.2.0",
 		"angular-sanitize":"~1.2.0",
-		"angular-touch":"~1.2.0"
+		"angular-touch":"~1.2.0",
+		"angular-route":"~1.2.0"
 	},
 	"devDependencies": {
 	}
