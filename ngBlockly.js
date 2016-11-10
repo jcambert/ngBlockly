@@ -4,12 +4,18 @@
 if(!angular.isDefined(Blockly))
     throw new Error('You must include \'The Blockly Library\' before angular-blockly');
 angular.module('angular-blockly', [])
-.provider('ngBlockly',['BlocklyToolbox',function (BlocklyToolbox) {
+.provider('ngBlockly',['EmptyToolbox',function (EmptyToolbox) {
     var defaultOptions={
-        path:'assets/',
+        //path:'assets/',
+        css:true,
         trashcan:true,
         sounds:false,
-        toolbox:BlocklyToolbox()
+        scrollbars: true,
+        disable: true,
+        grid: false,
+        maxBlocks: Infinity,
+        //toolbox: '<xml ><category id="catLogic" name="Logic"><block type="controls_if"></block></category></xml>'
+        toolbox:EmptyToolbox()
     };
     var options={};
     this.options = function(opt,value){
@@ -33,7 +39,18 @@ angular.module('angular-blockly', [])
     }
     
 }])
-.directive('ngBlockly', ['ngBlockly','$timeout', function (ngBlockly,$timeout) {
+.service('BlocklyService',['$timeout','Blockly', function($timeout,Blockly){
+    
+    
+    this.getWorkspace = function () {
+        return Blockly.getMainWorkspace();
+    };
+    
+    this.setToolbox = function (toolbox) {
+        this.getWorkspace().updateToolbox(toolbox);
+    };
+}])
+.directive('ngBlockly', ['ngBlockly','Blockly','BlocklyService','BlocklyToolbox','LogicToolbox','$timeout', function (ngBlockly,Blockly,BlocklyService,BlocklyToolbox,LogicToolbox,$timeout) {
 
 	return {
 		restrict: 'E',
@@ -50,15 +67,51 @@ angular.module('angular-blockly', [])
             var opts=angular.extend({},$scope.options || {},ngBlockly.getOptions());
             console.dir(opts);
             $timeout(function(){
-                var workspace = Blockly.inject($element.children()[0],opts);
-                console.dir(workspace);
-            },2000);
+                Blockly.inject($element.children()[0],opts);
+                BlocklyService.setToolbox(LogicToolbox());
+                
+            },100);
             
 		},
 		
 		
 	};
 }])
+
+.directive('ngBlocklyToolboxButton',[function(){
+    return{
+        restrict:'E',
+        replace:true,
+        scope:{
+            iconShow:'@',
+            iconHide:'@',
+            onShow:  '&',
+            onHide:  '&',
+            visibilityOnStart: '='
+        },
+        template:'<a id="button_toggle_toolbox"  style="width: 130px;" ng-click="toggle=!toggle"><i id="button_toggle_toolbox_icon" class="{{iconShow}}" ng-show="!toggle"></i><i id="button_toggle_toolbox_icon" class="{{iconHide}}" ng-show="toggle"></i></a>',
+        link:function($scope,$element,attrs){
+            $scope.$watch('toggle',function(newValue){
+                if(newValue)
+                    $scope.onShow();
+                else    
+                    $scope.onHide();
+            });
+            $scope.toggle = $scope.visibilityOnStart;
+            
+        }
+    }
+}])
+
+.constant('Blockly',Blockly)
+.constant('EmptyToolbox',function(){
+     var toolboxXml= ['<xml >','<category id="catLogic" name="Empty">','</category>','</xml>'];
+     return toolboxXml.join('');
+})
+.constant('LogicToolbox',function(){
+     var toolboxXml= ['<xml >','<category id="catLogic" name="Logic">','<block type="controls_if">','</block>','</category>','</xml>'];
+     return toolboxXml.join('');
+})
 .constant('BlocklyToolbox',function(){
     var toolboxXml= 
    /* '<xml >'+
