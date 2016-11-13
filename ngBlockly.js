@@ -1,9 +1,27 @@
 
 'use strict';
-(function(angular,Blockly){
-if(!angular.isDefined(Blockly))
+(function(angular,Blockly,X2JS,_){
+/*if(!angular.isDefined(Blockly))
     throw new Error('You must include \'The Blockly Library\' before angular-blockly');
-angular.module('angular-blockly', [])
+if(!angular.isDefined(X2JS))
+    throw new Error('You must include \'The X2JS Library\' before angular-blockly');
+if(!angular.isDefined(_))
+    throw new Error('You must include \'The Lodash Library\' before angular-blockly');
+ */       
+angular.module('angular-blockly', ['ngAnimate',])
+.run(['$log',function($log){
+    $log.log('ngBlockly is running');
+}])
+.constant('Blockly',Blockly)
+.constant('_',_)
+.constant('EmptyToolbox',function(){
+     var toolboxXml= ['<xml >','<category id="catLogic" name="Empty">','</category>','</xml>'];
+     return toolboxXml.join('');
+})
+.constant('LogicToolbox',function(){
+     var toolboxXml= ['<xml >','<category id="catLogic" name="Logic">','<block type="controls_if">','</block>','</category>','</xml>'];
+     return toolboxXml.join('');
+})
 .provider('ngBlockly',['EmptyToolbox',function (EmptyToolbox) {
     var defaultOptions={
         //path:'assets/',
@@ -39,8 +57,8 @@ angular.module('angular-blockly', [])
     }
     
 }])
-.service('BlocklyService',['$timeout','Blockly', function($timeout,Blockly){
-    
+.service('BlocklyService',['$timeout','Blockly','$rootScope', function($timeout,Blockly,$rootScope){
+
     
     this.getWorkspace = function () {
         return Blockly.getMainWorkspace();
@@ -48,9 +66,58 @@ angular.module('angular-blockly', [])
     
     this.setToolbox = function (toolbox) {
         this.getWorkspace().updateToolbox(toolbox);
+        console.dir(this.getToolbox());
+        $rootScope.$broadcast('BLOCKLY_TOOLBOX_READY');
     };
+    
+    this.getToolbox = function(){
+        return document.getElementById(':0');
+    };
+    this.getToolboxPosition = function(){
+        return {x:this.getToolbox().clientLeft,y:this.getToolbox().clientTop};
+    };
+    this.getToolboxBounds = function(){
+        return {width:this.getToolbox().clientWidth,height:this.getToolbox().clientHeight};
+    };
+    
+    
 }])
-.directive('ngBlockly', ['ngBlockly','Blockly','BlocklyService','BlocklyToolbox','LogicToolbox','$timeout', function (ngBlockly,Blockly,BlocklyService,BlocklyToolbox,LogicToolbox,$timeout) {
+
+.service('BlocklyToolbox',['$log','Blockly','BlocklyService','_',function($log,Blockly,BlocklyService,_){
+    
+    this.toolbox = {'xml':{'_id':'toolbox','_style':'display: none','category':[]}};
+    var x2js = new X2JS();
+    
+    //var toolboxXml= ['<xml >','<category id="catLogic" name="Logic">','<block type="controls_if">','</block>','</category>','</xml>'];
+    this.addCategory = function(name,id){
+        var idx=this.toolbox.xml.category.push({'block':[],'_id':id,'_name':name});
+        $log.log('Add Category:');$log.log(this.toolbox);
+        return this.toolbox.xml.category[idx];
+    }
+    this.getCategory = function(id){
+        //try{
+            return _.find(this.toolbox.xml.category,function(cat){return cat._id == id;});
+      //  }catch(err){
+      //      return null;
+      //  }
+        
+    }
+    this.addBlock = function(category,name, definition,generator){
+        if(angular.isDefined(definition))
+            Blockly.Blocks[name]=definition;
+            
+        this.getCategory(category).block.push({'_type':name});
+        
+        if(angular.isDefined(generator))
+            Blockly.Javascript[name]=generator;
+            
+        $log.log('Add block:');$log.log(this.toolbox);$log.log(x2js.json2xml_str( this.toolbox ));
+    };
+    this.apply = function(){
+        BlocklyService.setToolbox(x2js.json2xml_str( this.toolbox ));
+    }
+}])
+.directive('ngBlockly', ['ngBlockly','Blockly','BlocklyService',/*'BlocklyToolbox',*/'$timeout', function (ngBlockly,Blockly,BlocklyService,/*BlocklyToolbox,*/$timeout) {
 
 	return {
 		restrict: 'E',
@@ -66,284 +133,225 @@ angular.module('angular-blockly', [])
 		link: function($scope, $element, attrs) {
             var opts=angular.extend({},$scope.options || {},ngBlockly.getOptions());
             console.dir(opts);
-            $timeout(function(){
-                Blockly.inject($element.children()[0],opts);
-                BlocklyService.setToolbox(LogicToolbox());
-                
-            },100);
             
+            
+            $element.ready(function(){
+                console.log('ready');
+                $timeout(function(){
+                    Blockly.inject($element.children()[0],opts);
+                    //BlocklyService.setToolbox(LogicToolbox());
+                   // BlocklyToolbox.apply();
+                },100);
+            });
 		},
 		
 		
 	};
 }])
 
-.directive('ngBlocklyToolboxButton',[function(){
+.directive('ngBlocklyToolboxButton',[ '$compile','BlocklyService',function($compile,BlocklyService){
+    function validateFileExtension(fileName) {        
+        var exp = /^.*\.(jpg|jpeg|gif|JPG|png|PNG)$/;         
+        return exp.test(fileName);  
+    }
     return{
         restrict:'E',
         replace:true,
+        require:['ngModel'],
         scope:{
             iconShow:'@',
+            iconOverShow:'@',
+            iconDownShow:'@',
             iconHide:'@',
+            iconOverHide:'@',
+            iconDownHide:'@',
             onShow:  '&',
             onHide:  '&',
-            visibilityOnStart: '='
+            ngModel:'='
+            
         },
-        template:'<a id="button_toggle_toolbox"  style="width: 130px;" ng-click="toggle=!toggle"><i id="button_toggle_toolbox_icon" class="{{iconShow}}" ng-show="!toggle"></i><i id="button_toggle_toolbox_icon" class="{{iconHide}}" ng-show="toggle"></i></a>',
-        link:function($scope,$element,attrs){
-            $scope.$watch('toggle',function(newValue){
+        controller:['$scope','$rootScope',function($scope,$rootScope){
+            $scope.icon = $scope.iconShow;
+            $scope.ngModel =true;
+            $scope.toggleLeave = function(){
+            if(!$scope.iconMode)return;
+                $scope.icon =  $scope.ngModel?$scope.iconHide:$scope.iconShow;
+            }
+            $scope.iconOver  = function(){
+                if(angular.isDefined($scope.iconOverShow) && angular.isDefined($scope.iconOverHide))
+                $scope.icon = $scope.ngModel?$scope.iconOverHide:$scope.iconOverShow;
+            }
+             $scope.iconDown  = function(){
+                if(angular.isDefined($scope.iconDownShow) && angular.isDefined($scope.iconDownHide))
+                $scope.icon = $scope.ngModel?$scope.iconDownHide:$scope.iconDownShow;
+            }
+            $scope.$watch('ngModel',function(newValue){
                 if(newValue)
                     $scope.onShow();
                 else    
                     $scope.onHide();
+                $scope.toggleLeave();
+                
             });
-            $scope.toggle = $scope.visibilityOnStart;
+            $rootScope.$on('BLOCKLY_TOOLBOX_READY',function(){
+                console.dir(BlocklyService.getToolboxBounds().width);
+                $scope.bounds=BlocklyService.getToolboxBounds();
+                $scope.position=BlocklyService.getToolboxPosition();
+                console.dir($scope.position);
+            })
+        }],
+        
+        link:function($scope,$element,attrs){
+            $scope.iconMode=false;
+            $scope.bounds={width:0,height:0};
+            $scope.position={left:0,top:0};    
             
+            var template= angular.element('<a id="button_toggle_toolbox"  ng-click="ngModel=!ngModel" style="width:{{bounds.width}}px;left:{{position.left}}px"><ng-slide target="blocklyToolboxDiv" ng-model="ngModel"></ng-slide></a>');
+           
+            
+            
+            if (validateFileExtension($scope.iconShow) && validateFileExtension($scope.iconHide) ) {
+                $scope.iconMode=true;
+                console.dir($scope.icon);
+                var icon=angular.element('<img ng-src="{{icon}}" ></img>');
+                template.attr('ng-mouseover',"iconOver()");
+                template.attr('ng-mouseleave',"toggleLeave()");
+                template.attr('ng-mousedown','iconDown();')
+                template.append(icon);
+            }else{
+                $scope.iconMode=false;
+                var icon_=angular.element('<i id="button_toggle_toolbox_icon" ng-class="{ iconShow:ngModel, iconHide:!ngModel}"></i>');
+                template.append(icon_);
+            }
+
+            
+                    
+             
+           $element=$element.replaceWith( $compile(template)($scope) );
+           console.dir($element.html()); 
         }
     }
 }])
+.directive('ngSlide',['BlocklyService','$rootScope',function(BlocklyService,$rootScope){
+    return{
+        restrict:'E',
+        scope:{
+            target:'@',
+            ngModel:'=',
+        },
+        link:function($scope,$element,attrs,controllers){
+            console.dir($scope.ngModel);
+            //$scope.target = attrs['target'];
+             var elt=undefined;
+             $rootScope.$on('BLOCKLY_TOOLBOX_READY',function(){
+                  elt= document.getElementsByClassName($scope.target)[0];//document.getElementById(':0');
+                  elt=angular.element(elt);//.addClass('toolbox_toggle_off');
+                  update();
+                //var toto=document.getElementsByClassName('blocklyToolboxDiv')[0].addClass('TOTO');
+                //console.dir(elt);
+             });
+             function update(){
+                if(!angular.isDefined(elt))return;
+                if($scope.ngModel){
+                    elt.removeClass('toolbox_toggle_off');
+                    elt.addClass('toolbox_toggle_on');
+                }else{
+                    elt.removeClass('toolbox_toggle_on');
+                    elt.addClass('toolbox_toggle_off');
+                }
+             }
+            $scope.$watch('ngModel',function(){
+                update();
+            });
+        }
+        
+    }
+}])
+.directive('ngVerticalSlide', ['$timeout',function ($timeout) {
+      var getTemplate, link;
+      getTemplate = function (tElement, tAttrs) {
+        if (tAttrs.lazyRender !== void 0) {
+          return '<div ng-if=\'lazyRender\' ng-transclude></div>';
+        } else {
+          return '<div ng-transclude></div>';
+        }
+      };
+      link = function (scope, element, attrs, ctrl, transclude) {
+        var closePromise, duration, elementScope, emitOnClose, getHeight, hide, lazyRender, onClose, show;
+        duration = attrs.duration || 1;
+        elementScope = element.scope();
+        emitOnClose = attrs.emitOnClose;
+        onClose = attrs.onClose;
+        lazyRender = attrs.lazyRender !== void 0;
+        if (lazyRender) {
+          scope.lazyRender = scope.expanded;
+        }
+        closePromise = null;
+        element.css({
+          overflow: 'hidden',
+          transitionProperty: 'height',
+          transitionDuration: '' + duration + 's',
+          transitionTimingFunction: 'ease-in-out'
+        });
+        getHeight = function (passedScope) {
+          var c, children, height, _i, _len;
+          height = 0;
+          children = element.children();
+          for (_i = 0, _len = children.length; _i < _len; _i++) {
+            c = children[_i];
+            height += c.clientHeight;
+          }
+          return '' + height + 'px';
+        };
+        show = function () {
+          if (closePromise) {
+            $timeout.cancel(closePromise);
+          }
+          if (lazyRender) {
+            scope.lazyRender = true;
+          }
+          return element.css('height', getHeight());
+        };
+        hide = function (){
+          element.css('height', '0px');
+          if (emitOnClose || onClose || lazyRender) {
+            return closePromise = $timeout(function () {
+              if (emitOnClose) {
+                scope.$emit(emitOnClose, {});
+              }
+              if (onClose) {
+                elementScope.$eval(onClose);
+              }
+              if (lazyRender) {
+                return scope.lazyRender = false;
+              }
+            }, duration * 1000);
+          }
+        };
+        scope.$watch('expanded', function (value, oldValue) {
+          if (value) {
+            return $timeout(show);
+          } else {
+            return $timeout(hide);
+          }
+        });
+        return scope.$watch(getHeight, function (value, oldValue) {
+          if (scope.expanded && value !== oldValue) {
+            return $timeout(show);
+          }
+        });
+      };
+      return {
+        restrict: 'A',
+        scope: { expanded: '=ngSlideDown' },
+        transclude: true,
+        link: link,
+        template: function (tElement, tAttrs) {
+          return getTemplate(tElement, tAttrs);
+        }
+      };
+    }
+  ])
 
-.constant('Blockly',Blockly)
-.constant('EmptyToolbox',function(){
-     var toolboxXml= ['<xml >','<category id="catLogic" name="Empty">','</category>','</xml>'];
-     return toolboxXml.join('');
-})
-.constant('LogicToolbox',function(){
-     var toolboxXml= ['<xml >','<category id="catLogic" name="Logic">','<block type="controls_if">','</block>','</category>','</xml>'];
-     return toolboxXml.join('');
-})
-.constant('BlocklyToolbox',function(){
-    var toolboxXml= 
-   /* '<xml >'+
-  '<block type="controls_if"></block>'+
-  '<block type="controls_repeat_ext"></block>'+
-  '<block type="logic_compare"></block>'+
-  '<block type="math_number"></block>'+
-  '<block type="math_arithmetic"></block>'+
-  '<block type="text"></block>'+
-  '<block type="text_print"></block>'+
-'</xml>';*/
-'<xml>' +
-'  <sep></sep>' +
-'  <category id="catLogic" name="Logic">' +
-'    <block type="controls_if"></block>' +
-'    <block type="logic_compare"></block>' +
-'    <block type="logic_operation"></block>' +
-'    <block type="logic_negate"></block>' +
-'    <block type="logic_boolean"></block>' +
-'    <block type="logic_null"></block>' +
-'    <block type="logic_ternary"></block>' +
-'  </category>' +
-'  <sep></sep>' +
-'  <category id="catLoops" name="Loops">' +
-'    <block type="controls_repeat_ext">' +
-'      <value name="TIMES">' +
-'        <block type="math_number">' +
-'          <field name="NUM">10</field>' +
-'        </block>' +
-'      </value>' +
-'    </block>' +
-'    <block type="controls_whileUntil"></block>' +
-'    <block type="controls_for">' +
-'      <value name="FROM">' +
-'        <block type="math_number">' +
-'          <field name="NUM">1</field>' +
-'        </block>' +
-'      </value>' +
-'      <value name="TO">' +
-'        <block type="math_number">' +
-'          <field name="NUM">10</field>' +
-'        </block>' +
-'      </value>' +
-'      <value name="BY">' +
-'        <block type="math_number">' +
-'          <field name="NUM">1</field>' +
-'        </block>' +
-'      </value>' +
-'    </block>' +
-'    <block type="controls_flow_statements"></block>' +
-'  </category>' +
-'  <sep></sep>' +
-'  <category id="catMath" name="Math">' +
-'    <block type="math_number"></block>' +
-'    <block type="math_arithmetic"></block>' +
-'    <block type="math_single"></block>' +
-'    <block type="math_trig"></block>' +
-'    <block type="math_constant"></block>' +
-'    <block type="math_number_property"></block>' +
-'    <block type="math_change">' +
-'      <value name="DELTA">' +
-'        <block type="math_number">' +
-'          <field name="NUM">1</field>' +
-'        </block>' +
-'      </value>' +
-'    </block>' +
-'    <block type="math_round"></block>' +
-'    <block type="math_modulo"></block>' +
-'    <block type="math_constrain">' +
-'      <value name="LOW">' +
-'        <block type="math_number">' +
-'          <field name="NUM">1</field>' +
-'        </block>' +
-'      </value>' +
-'      <value name="HIGH">' +
-'        <block type="math_number">' +
-'          <field name="NUM">100</field>' +
-'        </block>' +
-'      </value>' +
-'    </block>' +
-'    <block type="math_random_int">' +
-'      <value name="FROM">' +
-'        <block type="math_number">' +
-'          <field name="NUM">1</field>' +
-'        </block>' +
-'      </value>' +
-'      <value name="TO">' +
-'        <block type="math_number">' +
-'          <field name="NUM">100</field>' +
-'        </block>' +
-'      </value>' +
-'    </block>' +
-'    <block type="math_random_float"></block>' +
-'    <block type="base_map"></block>' +
-'  </category>' +
-'  <sep></sep>' +
-'  <category id="catText" name="Text">' +
-'    <block type="text"></block>' +
-'    <block type="text_join"></block>' +
-'    <block type="text_append">' +
-'      <value name="TEXT">' +
-'        <block type="text"></block>' +
-'      </value>' +
-'    </block>' +
-'    <block type="text_length"></block>' +
-'    <block type="text_isEmpty"></block>' +
-//'    <!--block type="text_trim"></block Need to update block -->' +
-//'    <!--block type="text_print"></block Part of the serial comms -->' +
-'  </category>' +
-'  <sep></sep>' +
-'  <category id="catVariables" name="Variables">' +
-'    <block type="variables_get"></block>' +
-'    <block type="variables_set"></block>' +
-'    <block type="variables_set">' +
-'      <value name="VALUE">' +
-'        <block type="variables_set_type"></block>' +
-'      </value>' +
-'    </block>' +
-'    <block type="variables_set_type"></block>' +
-'  </category>' +
-'  <sep></sep>' +
-'  <category id="catFunctions" name="Functions" custom="PROCEDURE"></category>' +
-'  <sep></sep>' +
-'  <category id="catInputOutput" name="Input/Output">' +
-'    <block type="io_digitalwrite">' +
-'      <value name="STATE">' +
-'        <block type="io_highlow"></block>' +
-'      </value>' +
-'    </block>' +
-'    <block type="io_digitalread"></block>' +
-'    <block type="io_builtin_led">' +
-'      <value name="STATE">' +
-'        <block type="io_highlow"></block>' +
-'      </value>' +
-'    </block>' +
-'    <block type="io_analogwrite"></block>' +
-'    <block type="io_analogread"></block>' +
-'    <block type="io_highlow"></block>' +
-'    <block type="io_pulsein">' +
-'      <value name="PULSETYPE">' +
-'        <shadow type="io_highlow"></shadow>' +
-'      </value>' +
-'    </block>' +
-'    <block type="io_pulsetimeout">' +
-'      <value name="PULSETYPE">' +
-'        <shadow type="io_highlow"></shadow>' +
-'      </value>' +
-'      <value name="TIMEOUT">' +
-'        <block type="math_number"></block>' +
-'      </value>'+
-'    </block>' +
-'  </category>' +
-'  <sep></sep>' +
-'  <category id="catTime" name="Time">' +
-'    <block type="time_delay">' +
-'      <value name="DELAY_TIME_MILI">' +
-'        <block type="math_number">' +
-'          <field name="NUM">1000</field>' +
-'        </block>' +
-'      </value>' +
-'    </block>' +
-'    <block type="time_delaymicros">' +
-'      <value name="DELAY_TIME_MICRO">' +
-'        <block type="math_number">' +
-'          <field name="NUM">100</field>' +
-'        </block>' +
-'      </value>' +
-'    </block>' +
-'    <block type="time_millis"></block>' +
-'    <block type="time_micros"></block>' +
-'    <block type="infinite_loop"></block>' +
-'  </category>' +
-'  <sep></sep>' +
-'  <category id="catAudio" name="Audio">' +
-'    <block type="io_tone">' +
-'      <field name="TONEPIN">0</field>' +
-'      <value name="FREQUENCY">' +
-'        <shadow type="math_number">' +
-'          <field name="NUM">220</field>' +
-'        </shadow>' +
-'      </value>' +
-'    </block>' +
-'    <block type="io_notone"></block>' +
-'  </category>' +
-'  <sep></sep>' +
-'  <category id="catMotors" name="Motors">' +
-'    <block type="servo_write">' +
-'      <value name="SERVO_ANGLE">' +
-'        <block type="math_number">' +
-'          <field name="NUM">90</field>' +
-'        </block>' +
-'      </value>' +
-'    </block>' +
-'    <block type="servo_read"></block>' +
-'    <block type="stepper_config">' +
-'      <field name="STEPPER_PIN1">1</field>' +
-'      <field name="STEPPER_PIN2">2</field>' +
-'      <value name="STEPPER_STEPS">' +
-'        <block type="math_number">' +
-'          <field name="NUM">100</field>' +
-'        </block>' +
-'      </value>' +
-'      <value name="STEPPER_SPEED">' +
-'        <block type="math_number">' +
-'          <field name="NUM">10</field>' +
-'        </block>' +
-'      </value>' +
-'    </block>' +
-'    <block type="stepper_step">' +
-'      <value name="STEPPER_STEPS">' +
-'        <block type="math_number">' +
-'          <field name="NUM">10</field>' +
-'        </block>' +
-'      </value>' +
-'    </block>' +
-'  </category>' +
-'  <sep></sep>' +
-'  <category id="catComms" name="Comms">' +
-'    <block type="serial_setup"></block>' +
-'    <block type="serial_print"></block>' +
-'    <block type="text_prompt_ext">' +
-'      <value name="TEXT">' +
-'        <block type="text"></block>' +
-'      </value>' +
-'    </block>' +
-'    <block type="spi_setup"></block>' +
-'    <block type="spi_transfer"></block>' +
-'    <block type="spi_transfer_return"></block>' +
-'  </category>' +
-'</xml>';   
-    return Blockly.Xml.textToDom(toolboxXml);
-    //return toolboxXml;
-})
 ;
-})(angular,Blockly);
+})(angular,Blockly,X2JS,_);

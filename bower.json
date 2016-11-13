@@ -24,9 +24,11 @@
     "angular-touch": "~1.2.0",
     "angular-route": "~1.2.0",
     "google-blockly": "*",
-    "google-closure-library": "*"
+    "google-closure-library": "*",
+    "abdmob/x2js": "^1.2.0",
+    "lodash": "^4.16.6"
   },
   "devDependencies": {},
   "homepage": "https://github.com/jcambert/ngBlockly",
-  "main": "app.js"
+  "main": "server.js"
 }

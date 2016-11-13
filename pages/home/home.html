@@ -1,20 +1,28 @@
 <div ng-controller='HomeCtrl'>	
-    <xml id="toolbox" style="display: none">
-  <category name="Control">
-    <block type="controls_if"></block>
-    <block type="controls_whileUntil"></block>
-    <block type="controls_for">
-  </category>
-  <category name="Logic">
-    <block type="logic_compare"></block>
-    <block type="logic_operation"></block>
-    <block type="logic_boolean"></block>
-  </category>
-</xml>
-<ng-blockly-toolbox-button on-show="onShowToolbox" on-hide="onHideToolbox" icon-show="/media/icon-eye-128.png" icon-hide="/media/icon-eye-disabled-512.png">
+<!--<xml id="toolbox" style="display: none">
+    <category name="Control">
+        <block type="controls_if"></block>
+        <block type="controls_whileUntil"></block>
+        <block type="controls_for">
+    </category>
+    <category name="Logic">
+        <block type="logic_compare"></block>
+        <block type="logic_operation"></block>
+        <block type="logic_boolean"></block>
+    </category>
+</xml>-->
+<ng-blockly-toolbox-button  on-show="onShowToolbox()" 
+                            on-hide="onHideToolbox()" 
+                            icon-show="/media/icon-eye-active-32.png"
+                            icon-over-show="/media/icon-eye-hover-32.png"
+                            icon-hide="/media/icon-eye-disabled-32.png"
+                            icon-over-hide="/media/icon-eye-disabled-hover-32.png"
+                            ng-model="toggle"
+                            >
 </ng-blockly-toolbox-button>
+<button type="button" value="PRESS" ng-click="press()" style="position:absolute;top:40px;">PRESS</button>
 	<!-- TODO: place directive call here -->
-   <!-- <ng-blockly  id="blocklyDiv"></ng-blockly> -->
+   <ng-blockly  id="blocklyDiv"></ng-blockly>
     
     <!--<div id="blocklyDiv" style="height:100%" class="ng-blockly" ng-blockly></div>-->
 </div>

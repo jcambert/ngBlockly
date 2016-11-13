@@ -1,3 +1,64 @@
+//@btnToggleButtonPositionLeft:12px;
+//@btnToggleButtonPositionTop:8px;
+@btnToggleButtonPositionWidth:130px;
+@btnToggleButtonBackgroundColor:#DFEFF0 ;
+@btnToggleButtonActiveBackgroundColor:#009AA3;
+@btnToggleButtonHoverBackgroundColor:#00CAD6;
+@btnToggleHasBackgroundColor:true;
+@btnToggleTransition:1s;
+
+/* ngBlockly components  */
+#button_toggle_toolbox{
+    position:absolute;
+    margin: 0 !important;
+    padding: 0px !important;
+    //left: @btnToggleButtonPositionLeft;
+    //top: @btnToggleButtonPositionTop;
+    text-align: center;
+    font-size: 2rem !important;
+    z-index: 5;
+    width:@btnToggleButtonPositionWidth;
+    background-color: @btnToggleButtonBackgroundColor;
+    &:active{
+        background-color: @btnToggleButtonActiveBackgroundColor;
+    }
+    &:hover{
+        background-color: @btnToggleButtonHoverBackgroundColor
+    }
+    img{
+        width:25px;
+    }
+}
+
+
+.toolbox_toggle_on {
+    -moz-transition-duration: @btnToggleTransition;
+    -webkit-transition-duration: @btnToggleTransition;
+    -o-transition-duration:@btnToggleTransition;
+    transition-duration: @btnToggleTransition;
+    -moz-transition-timing-function: ease-in;
+    -webkit-transition-timing-function: ease-in;
+    -o-transition-timing-function: ease-in;
+    transition-timing-function: ease-in;
+    max-height: 1000px;
+    overflow: hidden;
+}
+.toolbox_toggle_off {
+  overflow: hidden;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    -moz-transition-duration:@btnToggleTransition;
+    -webkit-transition-duration: @btnToggleTransition;
+    -o-transition-duration:@btnToggleTransition;
+    transition-duration: @btnToggleTransition;
+    -moz-transition-timing-function: cubic-bezier(0, 1, 0.5, 1);
+    -webkit-transition-timing-function: cubic-bezier(0, 1, 0.5, 1);
+    -o-transition-timing-function: cubic-bezier(0, 1, 0.5, 1);
+    transition-timing-function: cubic-bezier(0, 1, 0.5, 1);
+}
 /*****************************/
 /*  Overwriting Blockly CSS  */
 /*****************************/

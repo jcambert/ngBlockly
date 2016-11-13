@@ -1,3 +1,51 @@
+/* ngBlockly components  */
+#button_toggle_toolbox {
+  position: absolute;
+  margin: 0 !important;
+  padding: 0px !important;
+  text-align: center;
+  font-size: 2rem !important;
+  z-index: 5;
+  width: 130px;
+  background-color: #dfeff0;
+}
+#button_toggle_toolbox:active {
+  background-color: #009aa3;
+}
+#button_toggle_toolbox:hover {
+  background-color: #00cad6;
+}
+#button_toggle_toolbox img {
+  width: 25px;
+}
+.toolbox_toggle_on {
+  -moz-transition-duration: 1s;
+  -webkit-transition-duration: 1s;
+  -o-transition-duration: 1s;
+  transition-duration: 1s;
+  -moz-transition-timing-function: ease-in;
+  -webkit-transition-timing-function: ease-in;
+  -o-transition-timing-function: ease-in;
+  transition-timing-function: ease-in;
+  max-height: 1000px;
+  overflow: hidden;
+}
+.toolbox_toggle_off {
+  overflow: hidden;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  -moz-transition-duration: 1s;
+  -webkit-transition-duration: 1s;
+  -o-transition-duration: 1s;
+  transition-duration: 1s;
+  -moz-transition-timing-function: cubic-bezier(0, 1, 0.5, 1);
+  -webkit-transition-timing-function: cubic-bezier(0, 1, 0.5, 1);
+  -o-transition-timing-function: cubic-bezier(0, 1, 0.5, 1);
+  transition-timing-function: cubic-bezier(0, 1, 0.5, 1);
+}
 /*****************************/
 /*  Overwriting Blockly CSS  */
 /*****************************/
@@ -76,6 +124,7 @@
 .blocklyScrollbarKnob {
   fill: #00878F !important;
   fill-opacity: 0.7 !important;
+  stroke-width: 0px !important;
 }
 .blocklyScrollbarBackground {
   stroke-width: 0px !important;
