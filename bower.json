@@ -18,15 +18,15 @@
     "tests"
   ],
   "dependencies": {
-    "angular": "~1.2.0",
-    "angular-animate": "~1.2.0",
-    "angular-sanitize": "~1.2.0",
-    "angular-touch": "~1.2.0",
-    "angular-route": "~1.2.0",
+    "angular-animate": "latest",
+    "angular-sanitize": "latest",
+    "angular-touch": "latest",
+    "angular-route": "latest",
     "google-blockly": "*",
     "google-closure-library": "*",
-    "abdmob/x2js": "^1.2.0",
-    "lodash": "^4.16.6"
+    "abdmob/x2js": "latest",
+    "lodash": "^4.16.6",
+    "angular": "1.5.8"
   },
   "devDependencies": {},
   "homepage": "https://github.com/jcambert/ngBlockly",

@@ -5,8 +5,10 @@
 
 angular.module('myApp')
 .run(['BlocklyToolbox',function(toolbox){
+    toolbox.addStandard();
     toolbox.addCategory('Domotick','cat_domotick');
     toolbox.addBlock('cat_domotick','controls_if');
+    toolbox.addBlock('cat_domotick','logic_compare');
     
 }])
 .controller('HomeCtrl', ['$scope', function($scope) {

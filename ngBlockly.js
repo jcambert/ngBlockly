@@ -7,8 +7,14 @@ if(!angular.isDefined(X2JS))
     throw new Error('You must include \'The X2JS Library\' before angular-blockly');
 if(!angular.isDefined(_))
     throw new Error('You must include \'The Lodash Library\' before angular-blockly');
- */       
-angular.module('angular-blockly', ['ngAnimate',])
+ */   
+String.prototype.camelize = function () {
+    return this.replace (/(?:^|[-])(\w)/g, function (_, c) {
+        return c ? c.toUpperCase () : '';
+    });
+}
+    
+angular.module('angular-blockly', ['ngAnimate'])
 .run(['$log',function($log){
     $log.log('ngBlockly is running');
 }])
@@ -22,12 +28,17 @@ angular.module('angular-blockly', ['ngAnimate',])
      var toolboxXml= ['<xml >','<category id="catLogic" name="Logic">','<block type="controls_if">','</block>','</category>','</xml>'];
      return toolboxXml.join('');
 })
+.constant('StandardToolbox',{
+    logic:['controls_if','logic_compare','logic_operation']
+   // loops:['controls_repeat_ext'],
+   // math:['math_number','math_arithmetic']
+})
 .provider('ngBlockly',['EmptyToolbox',function (EmptyToolbox) {
     var defaultOptions={
         //path:'assets/',
         css:true,
         trashcan:true,
-        sounds:false,
+        sounds:true,
         scrollbars: true,
         disable: true,
         grid: false,
@@ -83,10 +94,21 @@ angular.module('angular-blockly', ['ngAnimate',])
     
 }])
 
-.service('BlocklyToolbox',['$log','Blockly','BlocklyService','_',function($log,Blockly,BlocklyService,_){
-    
+.service('BlocklyToolbox',['$log','Blockly','BlocklyService','StandardToolbox','_',function($log,Blockly,BlocklyService,StandardToolbox,_){
+    var self=this;
     this.toolbox = {'xml':{'_id':'toolbox','_style':'display: none','category':[]}};
     var x2js = new X2JS();
+    
+    
+    this.addStandard = function(){
+        _.forEach(StandardToolbox,function(value,key){
+            var cat=['cat_',key].join('');
+            self.addCategory(key.camelize(),cat);
+            _.forEach(value,function(tb){
+                self.addBlock(cat,tb);
+            });
+        })
+    }
     
     //var toolboxXml= ['<xml >','<category id="catLogic" name="Logic">','<block type="controls_if">','</block>','</category>','</xml>'];
     this.addCategory = function(name,id){
@@ -117,7 +139,7 @@ angular.module('angular-blockly', ['ngAnimate',])
         BlocklyService.setToolbox(x2js.json2xml_str( this.toolbox ));
     }
 }])
-.directive('ngBlockly', ['ngBlockly','Blockly','BlocklyService',/*'BlocklyToolbox',*/'$timeout', function (ngBlockly,Blockly,BlocklyService,/*BlocklyToolbox,*/$timeout) {
+.directive('ngBlockly', ['ngBlockly','Blockly','BlocklyService','BlocklyToolbox','$timeout', function (ngBlockly,Blockly,BlocklyService,BlocklyToolbox,$timeout) {
 
 	return {
 		restrict: 'E',
@@ -140,7 +162,7 @@ angular.module('angular-blockly', ['ngAnimate',])
                 $timeout(function(){
                     Blockly.inject($element.children()[0],opts);
                     //BlocklyService.setToolbox(LogicToolbox());
-                   // BlocklyToolbox.apply();
+                    BlocklyToolbox.apply();
                 },100);
             });
 		},
@@ -267,91 +289,6 @@ angular.module('angular-blockly', ['ngAnimate',])
         
     }
 }])
-.directive('ngVerticalSlide', ['$timeout',function ($timeout) {
-      var getTemplate, link;
-      getTemplate = function (tElement, tAttrs) {
-        if (tAttrs.lazyRender !== void 0) {
-          return '<div ng-if=\'lazyRender\' ng-transclude></div>';
-        } else {
-          return '<div ng-transclude></div>';
-        }
-      };
-      link = function (scope, element, attrs, ctrl, transclude) {
-        var closePromise, duration, elementScope, emitOnClose, getHeight, hide, lazyRender, onClose, show;
-        duration = attrs.duration || 1;
-        elementScope = element.scope();
-        emitOnClose = attrs.emitOnClose;
-        onClose = attrs.onClose;
-        lazyRender = attrs.lazyRender !== void 0;
-        if (lazyRender) {
-          scope.lazyRender = scope.expanded;
-        }
-        closePromise = null;
-        element.css({
-          overflow: 'hidden',
-          transitionProperty: 'height',
-          transitionDuration: '' + duration + 's',
-          transitionTimingFunction: 'ease-in-out'
-        });
-        getHeight = function (passedScope) {
-          var c, children, height, _i, _len;
-          height = 0;
-          children = element.children();
-          for (_i = 0, _len = children.length; _i < _len; _i++) {
-            c = children[_i];
-            height += c.clientHeight;
-          }
-          return '' + height + 'px';
-        };
-        show = function () {
-          if (closePromise) {
-            $timeout.cancel(closePromise);
-          }
-          if (lazyRender) {
-            scope.lazyRender = true;
-          }
-          return element.css('height', getHeight());
-        };
-        hide = function (){
-          element.css('height', '0px');
-          if (emitOnClose || onClose || lazyRender) {
-            return closePromise = $timeout(function () {
-              if (emitOnClose) {
-                scope.$emit(emitOnClose, {});
-              }
-              if (onClose) {
-                elementScope.$eval(onClose);
-              }
-              if (lazyRender) {
-                return scope.lazyRender = false;
-              }
-            }, duration * 1000);
-          }
-        };
-        scope.$watch('expanded', function (value, oldValue) {
-          if (value) {
-            return $timeout(show);
-          } else {
-            return $timeout(hide);
-          }
-        });
-        return scope.$watch(getHeight, function (value, oldValue) {
-          if (scope.expanded && value !== oldValue) {
-            return $timeout(show);
-          }
-        });
-      };
-      return {
-        restrict: 'A',
-        scope: { expanded: '=ngSlideDown' },
-        transclude: true,
-        link: link,
-        template: function (tElement, tAttrs) {
-          return getTemplate(tElement, tAttrs);
-        }
-      };
-    }
-  ])
 
 ;
 })(angular,Blockly,X2JS,_);
