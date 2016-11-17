@@ -38,12 +38,12 @@ angular.module('angular-blockly', ['ngAnimate'])
         //path:'assets/',
         css:true,
         trashcan:true,
-        sounds:true,
+        sounds:false,
         scrollbars: true,
         disable: true,
         grid: false,
         maxBlocks: Infinity,
-        //toolbox: '<xml ><category id="catLogic" name="Logic"><block type="controls_if"></block></category></xml>'
+        //toolbox: '<xml ><category id="catLogic" name="Logic"><block type="controls_if"></block><block type="logic_ternary"></block></category></xml>'
         toolbox:EmptyToolbox()
     };
     var options={};
@@ -72,12 +72,14 @@ angular.module('angular-blockly', ['ngAnimate'])
 
     
     this.getWorkspace = function () {
+        if(Blockly.mainWorkspace==null)return null;
         return Blockly.getMainWorkspace();
     };
     
     this.setToolbox = function (toolbox) {
+        //console.dir(toolbox);
         this.getWorkspace().updateToolbox(toolbox);
-        console.dir(this.getToolbox());
+        //console.dir(this.getToolbox());
         $rootScope.$broadcast('BLOCKLY_TOOLBOX_READY');
     };
     
@@ -98,7 +100,7 @@ angular.module('angular-blockly', ['ngAnimate'])
     var self=this;
     this.toolbox = {'xml':{'_id':'toolbox','_style':'display: none','category':[]}};
     var x2js = new X2JS();
-    
+    this.currentCategory = undefined;
     
     this.addStandard = function(){
         _.forEach(StandardToolbox,function(value,key){
@@ -109,42 +111,105 @@ angular.module('angular-blockly', ['ngAnimate'])
             });
         })
     }
+    function setCurrentCategory(cat){
+        self.currentCategory=cat;
+        return cat;
+    }
     
-    //var toolboxXml= ['<xml >','<category id="catLogic" name="Logic">','<block type="controls_if">','</block>','</category>','</xml>'];
-    this.addCategory = function(name,id){
-        var idx=this.toolbox.xml.category.push({'block':[],'_id':id,'_name':name});
-        $log.log('Add Category:');$log.log(this.toolbox);
-        return this.toolbox.xml.category[idx];
+    // category = {name,id,colour}
+    this.addCategory = function(category){
+        if(angular.isString(category))
+            category = {id:'cat_'+category.toLowerCase(),name:category.camelize()};
+
+        var cat=self.getCategory(category.id);
+        if(cat!=null)return setCurrentCategory(cat);
+        cat={'block':[]};
+        _.forEach(Object.keys(category),function(key){
+            cat['_'+key]=category[key];
+        });
+        //var idx=this.toolbox.xml.category.push({'block':[],'_id':id,'_name':name});
+        var idx=this.toolbox.xml.category.push(cat);
+        //$log.log('Add Category:'+idx);$log.log(this.toolbox);
+        return setCurrentCategory(this.toolbox.xml.category[idx-1]);
     }
     this.getCategory = function(id){
-        //try{
+        try{
             return _.find(this.toolbox.xml.category,function(cat){return cat._id == id;});
-      //  }catch(err){
-      //      return null;
-      //  }
+        }catch(err){
+            return null;
+        }
         
     }
-    this.addBlock = function(category,name, definition,generator){
-        if(angular.isDefined(definition))
-            Blockly.Blocks[name]=definition;
-            
-        this.getCategory(category).block.push({'_type':name});
+    /// block ={category,type, definition,generator}
+    this.addBlock = function(block){
+
+        if(angular.isString(block))
+            block={type:block};
+
+        if(angular.isDefined(block.definition))
+            Blockly.Blocks[name]=block.definition;
         
-        if(angular.isDefined(generator))
-            Blockly.Javascript[name]=generator;
+        if(!angular.isDefined(block.category))
+            block.category=self.currentCategory;
+        
+        if(angular.isObject(block.category))
+            block.category.block.push({'_type':block.type});
+        else
+            this.getCategory(block.category).block.push({'_type':block.type});
+        
+        if(angular.isDefined(block.generator))
+            Blockly.Javascript[name]=block.generator;
             
-        $log.log('Add block:');$log.log(this.toolbox);$log.log(x2js.json2xml_str( this.toolbox ));
+        //$log.log('Add block:');$log.log(this.toolbox);$log.log(x2js.json2xml_str( this.toolbox ));
     };
     this.apply = function(){
         BlocklyService.setToolbox(x2js.json2xml_str( this.toolbox ));
     }
+
+    this.addXml = function(xml){
+       
+        xml=xml.split('"').join('\''); 
+        //console.dir(xml);
+        var tmptb=x2js.xml_str2json(xml);
+        //console.dir(tmptb)
+        var first=Object.keys(tmptb)[0].toLowerCase();
+        //console.dir(first);
+        if(first=='category'){
+            var cat = self.getCategory(tmptb.category._id);
+            if(cat==null)
+                cat=self.addCategory({name:tmptb.category._name,id:tmptb.category._id});
+            //console.dir(cat);
+            if(cat != null){ 
+              //  console.dir(tmptb.category.block);
+                _.forEach(tmptb.category.block,function(block){
+                    self.addBlock({type:block._type});
+                        //cat.block.push({'_type':block._type});
+                });
+            }
+        }
+
+        if(first == 'xml'){
+            //console.dir('addXml XML');console.dir(tmptb);
+            _.forEach(tmptb.xml.category,function(cat){
+                var category=self.addCategory({name:cat._name,id:cat._id,colour:cat._colour || ''});
+                //console.dir(cat);
+                _.forEach(cat.block,function(block){
+                    //console.dir(block);
+                    self.addBlock({type:block._type});
+                })
+            })
+        }
+
+        
+    }
 }])
-.directive('ngBlockly', ['ngBlockly','Blockly','BlocklyService','BlocklyToolbox','$timeout', function (ngBlockly,Blockly,BlocklyService,BlocklyToolbox,$timeout) {
+.directive('ngBlockly', ['ngBlockly','Blockly','BlocklyService','BlocklyToolbox','$timeout','$log', function (ngBlockly,Blockly,BlocklyService,BlocklyToolbox,$timeout,$log) {
 
 	return {
 		restrict: 'E',
 		scope: {
-            options:'='
+            options:'=',
+            toolboxId:'@',
 		},
 
 	    //replace: true,
@@ -154,14 +219,20 @@ angular.module('angular-blockly', ['ngAnimate'])
         }],
 		link: function($scope, $element, attrs) {
             var opts=angular.extend({},$scope.options || {},ngBlockly.getOptions());
-            console.dir(opts);
+            
+            //console.dir(document.getElementById($scope.toolboxId).outerHTML);
+            if(angular.isDefined($scope.toolboxId))
+                BlocklyToolbox.addXml( document.getElementById($scope.toolboxId).outerHTML);
             
             
             $element.ready(function(){
                 console.log('ready');
                 $timeout(function(){
+                   // $log.log('Inject Blockly');
+                    //$log.log(opts);
                     Blockly.inject($element.children()[0],opts);
                     //BlocklyService.setToolbox(LogicToolbox());
+                   // if(!angular.isDefined($scope.toolboxId))
                     BlocklyToolbox.apply();
                 },100);
             });
@@ -216,10 +287,10 @@ angular.module('angular-blockly', ['ngAnimate'])
                 
             });
             $rootScope.$on('BLOCKLY_TOOLBOX_READY',function(){
-                console.dir(BlocklyService.getToolboxBounds().width);
+                //console.dir(BlocklyService.getToolboxBounds().width);
                 $scope.bounds=BlocklyService.getToolboxBounds();
                 $scope.position=BlocklyService.getToolboxPosition();
-                console.dir($scope.position);
+                //console.dir($scope.position);
             })
         }],
         
@@ -234,7 +305,7 @@ angular.module('angular-blockly', ['ngAnimate'])
             
             if (validateFileExtension($scope.iconShow) && validateFileExtension($scope.iconHide) ) {
                 $scope.iconMode=true;
-                console.dir($scope.icon);
+                //console.dir($scope.icon);
                 var icon=angular.element('<img ng-src="{{icon}}" ></img>');
                 template.attr('ng-mouseover',"iconOver()");
                 template.attr('ng-mouseleave',"toggleLeave()");
@@ -250,7 +321,7 @@ angular.module('angular-blockly', ['ngAnimate'])
                     
              
            $element=$element.replaceWith( $compile(template)($scope) );
-           console.dir($element.html()); 
+           //console.dir($element.html()); 
         }
     }
 }])
@@ -262,7 +333,7 @@ angular.module('angular-blockly', ['ngAnimate'])
             ngModel:'=',
         },
         link:function($scope,$element,attrs,controllers){
-            console.dir($scope.ngModel);
+            //console.dir($scope.ngModel);
             //$scope.target = attrs['target'];
              var elt=undefined;
              $rootScope.$on('BLOCKLY_TOOLBOX_READY',function(){

@@ -5,11 +5,16 @@
 
 angular.module('myApp')
 .run(['BlocklyToolbox',function(toolbox){
-    toolbox.addStandard();
-    toolbox.addCategory('Domotick','cat_domotick');
-    toolbox.addBlock('cat_domotick','controls_if');
-    toolbox.addBlock('cat_domotick','logic_compare');
-    
+    console.dir('myapp is running');
+    //toolbox.addStandard();
+    toolbox.addCategory('Domotick');
+    toolbox.addBlock('controls_if');
+    toolbox.addBlock('logic_compare');
+
+    var xml='  <category id="catLogicals" name="Logicals">' +
+'    <block type="controls_if"></block>' +
+'  </category>' ;
+    toolbox.addXml(xml);
 }])
 .controller('HomeCtrl', ['$scope', function($scope) {
 	//TODO - put any directive code here

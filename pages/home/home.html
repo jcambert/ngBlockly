@@ -1,16 +1,18 @@
 <div ng-controller='HomeCtrl'>	
-<!--<xml id="toolbox" style="display: none">
-    <category name="Control">
+<xml id="toolbox" style="display: none">
+    <category name="Control" id="catControl" colour="330">
         <block type="controls_if"></block>
-        <block type="controls_whileUntil"></block>
-        <block type="controls_for">
+        <block type="controls_if"></block>
     </category>
-    <category name="Logic">
-        <block type="logic_compare"></block>
-        <block type="logic_operation"></block>
-        <block type="logic_boolean"></block>
+    <category name="Logic" id="catLogic">
+        <block type="controls_if"></block>
+        <block type="controls_if"></block>
     </category>
-</xml>-->
+    <category name="Logical" id="catLogical">
+       <block type="controls_if"></block>
+        <block type="controls_if"></block>
+    </category>
+</xml>
 <ng-blockly-toolbox-button  on-show="onShowToolbox()" 
                             on-hide="onHideToolbox()" 
                             icon-show="/media/icon-eye-active-32.png"
@@ -22,7 +24,7 @@
 </ng-blockly-toolbox-button>
 <button type="button" value="PRESS" ng-click="press()" style="position:absolute;top:40px;">PRESS</button>
 	<!-- TODO: place directive call here -->
-   <ng-blockly  id="blocklyDiv"></ng-blockly>
+   <ng-blockly  id="blocklyDiv" toolbox-id="toolbox"></ng-blockly>
     
     <!--<div id="blocklyDiv" style="height:100%" class="ng-blockly" ng-blockly></div>-->
 </div>

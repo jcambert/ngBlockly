@@ -1,32 +1,34 @@
-/**
-@toc
-1. setup - whitelist, appPath, html5Mode
-*/
-
 'use strict';
 
-angular.module('myApp', [
-'ngRoute', 'ngSanitize', 'ngTouch', 'ngAnimate',		//additional angular modules
-'angular-blockly'
-]).
-config(['$routeProvider', '$locationProvider', '$compileProvider', function($routeProvider, $locationProvider, $compileProvider) {
-	/**
-	setup - whitelist, appPath, html5Mode
-	@toc 1.
-	*/
-	$locationProvider.html5Mode(false);		//can't use this with github pages / if don't have access to the server
-	
-	// var staticPath ='/';
-	var staticPath;
-	// staticPath ='/angular-directives/ngBlockly/';		//local
-	staticPath ='/';		//nodejs (local)
-	// staticPath ='/ngBlockly/';		//gh-pages
-	var appPathRoute ='/';
-	var pagesPath =staticPath+'pages/';
-	
-	
-	$routeProvider.when(appPathRoute+'home', {templateUrl: pagesPath+'home/home.html'});
+var fs =require('fs');		//for image upload file handling
 
-	$routeProvider.otherwise({redirectTo: appPathRoute+'home'});
+var express = require('express');
+var app = express();
+
+var port =3000;
+var host ='localhost';
+var serverPath ='/';
+var staticPath ='/';
+
+var staticFilePath = __dirname + serverPath;
+// remove trailing slash if present
+if(staticFilePath.substr(-1) === '/'){
+	staticFilePath = staticFilePath.substr(0, staticFilePath.length - 1);
+}
+
+app.configure(function(){
+	// compress static content
+	app.use(express.compress());
+	app.use(serverPath, express.static(staticFilePath));		//serve static files
 	
-}]);
+	app.use(express.bodyParser());		//for post content / files - not sure if this is actually necessary?
+});
+
+//catch all route to serve index.html (main frontend app)
+app.get('*', function(req, res){
+	res.sendfile(staticFilePath + staticPath+ 'index.html');
+});
+
+app.listen(port);
+
+console.log('Server running at http://'+host+':'+port.toString()+'/');
