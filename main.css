@@ -91,7 +91,7 @@
   height: calc(63%);
   /* Standard */
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 .blocklyTreeRow {
   background: none !important;
