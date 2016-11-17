@@ -129,7 +129,8 @@ angular.module('angular-blockly', ['ngAnimate'])
         });
         //var idx=this.toolbox.xml.category.push({'block':[],'_id':id,'_name':name});
         var idx=this.toolbox.xml.category.push(cat);
-        //$log.log('Add Category:'+idx);$log.log(this.toolbox);
+        $log.log(category);
+        $log.log('Add Category:'+idx);$log.log(this.toolbox.xml.category[idx-1]);
         return setCurrentCategory(this.toolbox.xml.category[idx-1]);
     }
     this.getCategory = function(id){
@@ -163,6 +164,7 @@ angular.module('angular-blockly', ['ngAnimate'])
         //$log.log('Add block:');$log.log(this.toolbox);$log.log(x2js.json2xml_str( this.toolbox ));
     };
     this.apply = function(){
+        $log.log(x2js.json2xml_str( this.toolbox ));
         BlocklyService.setToolbox(x2js.json2xml_str( this.toolbox ));
     }
 
@@ -191,7 +193,7 @@ angular.module('angular-blockly', ['ngAnimate'])
         if(first == 'xml'){
             //console.dir('addXml XML');console.dir(tmptb);
             _.forEach(tmptb.xml.category,function(cat){
-                var category=self.addCategory({name:cat._name,id:cat._id,colour:cat._colour || ''});
+                var category=self.addCategory({name:cat._name,id:cat._id,colour:cat._colour || '210'});
                 //console.dir(cat);
                 _.forEach(cat.block,function(block){
                     //console.dir(block);
