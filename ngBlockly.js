@@ -14,7 +14,7 @@ String.prototype.camelize = function () {
     });
 }
     
-angular.module('angular-blockly', ['ngAnimate'])
+angular.module('angular-blockly', ['ngAnimate','LocalStorageModule'])
 .run(['$log',function($log){
     $log.log('ngBlockly is running');
 }])
@@ -43,6 +43,7 @@ angular.module('angular-blockly', ['ngAnimate'])
         disable: true,
         grid: false,
         maxBlocks: Infinity,
+        realTimeSaving:true,
         //toolbox: '<xml ><category id="catLogic" name="Logic"><block type="controls_if"></block><block type="logic_ternary"></block></category></xml>'
         toolbox:EmptyToolbox()
     };
@@ -70,12 +71,25 @@ angular.module('angular-blockly', ['ngAnimate'])
 }])
 .service('BlocklyService',['$timeout','Blockly','$rootScope', function($timeout,Blockly,$rootScope){
 
-    
+    var self=this;
     this.getWorkspace = function () {
         if(Blockly.mainWorkspace==null)return null;
         return Blockly.getMainWorkspace();
     };
-    
+    this.setCodeGeneratedLanguage = function(){
+
+    };
+    this.getAvailableGeneratedLanguage = function(){
+        var result=[]
+        console.dir(Blockly.JavaScript);
+        _.forEach(_.keys(Blockly),function(key){
+            //console.dir( Blockly[key]);
+            if( typeof Blockly[key] == Blockly.Generator ){
+                result.push({name:Blockly[key].name_,lang:key});
+            }
+        });
+        return result;
+    }
     this.setToolbox = function (toolbox) {
         //console.dir(toolbox);
         this.getWorkspace().updateToolbox(toolbox);
@@ -92,13 +106,50 @@ angular.module('angular-blockly', ['ngAnimate'])
     this.getToolboxBounds = function(){
         return {width:this.getToolbox().clientWidth,height:this.getToolbox().clientHeight};
     };
-    
-    
+    this.onChange = function(callback){
+        this.getWorkspace().addChangeListener(callback);
+    };
+    this.getGeneratedCode = function(){
+        var code= Blockly.JavaScript.workspaceToCode(self.getWorkspace());
+        return code;
+    };
+    this.clear = function(){
+        self.getWorkspace().clear();
+    }
+    this.getXml = function(){
+        var xmlDom = Blockly.Xml.workspaceToDom(self.getWorkspace());
+        var xmlText = Blockly.Xml.domToPrettyText(xmlDom);
+        return xmlText;
+    };
+    this.loadFromXml = function(blocksXml){
+        var xmlDom = null;
+        try {
+            xmlDom = Blockly.Xml.textToDom(blocksXml);
+        } catch (e) {
+            return false;
+        }
+        self.clear();
+        var sucess = false;
+        if (xmlDom) {
+            sucess = self.loadBlocksfromXmlDom(xmlDom);
+        }
+        return sucess;
+    }
+    this.loadBlocksfromXmlDom = function(blocksXmlDom){
+        try {
+            Blockly.Xml.domToWorkspace(blocksXmlDom, self.getWorkspace());
+        } catch (e) {
+            return false;
+        }
+        return true;
+    }
+
 }])
 
 .service('BlocklyToolbox',['$log','Blockly','BlocklyService','StandardToolbox','_',function($log,Blockly,BlocklyService,StandardToolbox,_){
     var self=this;
-    this.toolbox = {'xml':{'_id':'toolbox','_style':'display: none','category':[]}};
+    var rootbox={'xml':{'_id':'toolbox','_style':'display: none','category':[]}};
+    var categories =[];// {'xml':{'_id':'toolbox','_style':'display: none','category':[]}};
     var x2js = new X2JS();
     this.currentCategory = undefined;
     this.currentBlock = undefined;
@@ -129,14 +180,14 @@ angular.module('angular-blockly', ['ngAnimate'])
             cat['_'+key]=category[key];
         });
         //var idx=this.toolbox.xml.category.push({'block':[],'_id':id,'_name':name});
-        var idx=this.toolbox.xml.category.push(cat);
+        var idx=categories.push(cat);
         $log.log(category);
-        $log.log('Add Category:'+idx);$log.log(this.toolbox.xml.category[idx-1]);
-        return setCurrentCategory(this.toolbox.xml.category[idx-1]);
+        $log.log('Add Category:'+idx);$log.log(categories[idx-1]);
+        return setCurrentCategory(categories[idx-1]);
     }
     this.getCategory = function(id){
         try{
-            return _.find(this.toolbox.xml.category,function(cat){return cat._id == id;});
+            return _.find(categories,function(cat){return cat._id == id;});
         }catch(err){
             return null;
         }
@@ -162,8 +213,12 @@ angular.module('angular-blockly', ['ngAnimate'])
                
         this.currentBlock = cat.block[idx-1];
         console.log('Current Block');console.dir(this.currentBlock);
-        if(angular.isDefined(block.generator))
-            Blockly.Javascript[name]=block.generator;
+        if(angular.isDefined(block.generator)){
+            if(angular.isString(block.generator))
+                Blockly.Javascript[name]=block.generator;
+            else if(angular.isObject(block.generator))
+                Blockly[block.generator.lang]=block.generator.generator;
+        }
         
         if(angular.isDefined(block.field))
             addTree({field: block.field},this.currentBlock);
@@ -174,118 +229,83 @@ angular.module('angular-blockly', ['ngAnimate'])
 
     this.addField = function(field){
         console.log('add field');console.dir(field);
-        field.block.field.push({_name: field.name,__text:field.value});
+        var idx=field.block.field.push({_name: field.name,__text:field.value});
+        return field.block.field[idx-1];
     }
 
     this.apply = function(){
-        $log.log(x2js.json2xml_str( this.toolbox ));
-        BlocklyService.setToolbox(x2js.json2xml_str( this.toolbox ));
+        
+        rootbox.xml.category=categories;
+       // console.dir(rootbox);
+       // $log.log(x2js.json2xml_str(rootbox ));
+        BlocklyService.setToolbox(x2js.json2xml_str(rootbox ));
     }
 
+    //var level=-1;
     function addTree(tree,parent){
-        if(tree == null)return;
-        console.log('-------------------------------');
-        console.log('Add Tree');
+        if(tree == null || !angular.isDefined(tree))return;
+        //console.log('-------------------------------');
+        //console.log('Add Tree');
         var key=Object.keys(tree)[0].toLowerCase();
+        var node=null;
         //console.dir(tree);
-        console.log(key);
+        //console.log(key);
+        //level=level+1;
         if(key == 'xml'){
-             _.forEach(tree.xml.category,function(cat){
+            console.dir('tree xml');
+            /* _.forEach(tree.xml.category,function(cat){
                 addTree({category:cat});
-            })
+            })*/
         }
 
         if(key=='category'){
-            var cat = self.getCategory(tree.category._id);
-            if(cat==null)
-                cat=self.addCategory({name:tree.category._name,id:tree.category._id});
-            //console.dir(cat);
-            if(cat != null){ 
-                console.dir(tree.category);
-                if(angular.isArray(tree.category.block))
-                    _.forEach(tree.category.block,function(block){
-                        console.log(block);
-                        addTree({block:block});
-                        //cat.block.push({'_type':block._type});
-                    });
-                else addTree({block:tree.category.block});
+
+            if(angular.isArray(tree.category)){
+                //console.log('tree categories');
+                _.forEach(tree.category,function(cat){addTree({category:cat},parent)});
+            } else{
+                //console.log('tree category');
+                //console.dir(tree.category);
+                var idx=(parent==null?categories:parent).push(tree.category);
+                node=(parent==null?categories:parent)[idx-1];
             }
-        }
 
-        if(key == 'block'){
-            console.dir(tree);
-            var block=self.addBlock({type:tree.block._type});
-            console.dir(tree.block.field);
-            if(angular.isDefined(tree.block.field))
-                if( angular.isArray(tree.block.field))
-                    _.forEach(tree.block.field,function(field){
-                        console.dir(field);
-                        addTree({field:field},block);
-                    });
-                else addTree({field:tree.block.field},block);
+            return;
         }
-
-        if(key == 'field'){
-            console.dir(tree);
-            //parent.field.push({_name: tree.field._name,__text:tree.field.__text});
-            self.addField({block:parent,name:tree.field._name,value:tree.field.__text});
+       
+        if( !key.startsWith('_') && !key.startsWith('category')){
+           // console.log('################################');
+            
+            _.forEach(_.keys(tree[key]),function(childkey){
+                
+               // console.log(childkey);
+                var t={};
+                t[childkey]=tree[key][childkey];
+                //console.dir(tree[key][childkey]);
+                addTree(t,node);
+            });
         }
-
+       // level=level-1;
+        //console.log('***********************************************');
         return null;
     }
     this.addXml = function(xml){
        
         xml=xml.split('"').join('\''); 
-        //console.dir(xml);
         var tmptb=x2js.xml_str2json(xml);
-        if(1==1){
-            console.dir(xml);
-            addTree(tmptb);
-            return;
-        }
-        //console.dir(tmptb)
-        var first=Object.keys(tmptb)[0].toLowerCase();
-        //console.dir(first);
-        if(first=='category'){
-            var cat = self.getCategory(tmptb.category._id);
-            if(cat==null)
-                cat=self.addCategory({name:tmptb.category._name,id:tmptb.category._id});
-            console.dir(cat);
-            if(cat != null){ 
-                console.dir(tmptb.category.block);
-                if(angular.isArray(tmptb.category.block))
-                    _.forEach(tmptb.category.block,function(block){
-                        console.dir(block);
-                        self.addBlock({type:block._type});
-                        //cat.block.push({'_type':block._type});
-                    });
-                else
-                    self.addBlock({type:tmptb.category.block._type});
-            }
-        }
-
-        if(first == 'xml'){
-            //console.dir('addXml XML');console.dir(tmptb);
-            _.forEach(tmptb.xml.category,function(cat){
-                var category=self.addCategory({name:cat._name,id:cat._id,colour:cat._colour || '210'});
-                //console.dir(cat);
-                _.forEach(cat.block,function(block){
-                    //console.dir(block);
-                    self.addBlock({type:block._type});
-                })
-            })
-        }
+        addTree(tmptb);
 
         
     }
 }])
-.directive('ngBlockly', ['ngBlockly','Blockly','BlocklyService','BlocklyToolbox','$timeout','$log', function (ngBlockly,Blockly,BlocklyService,BlocklyToolbox,$timeout,$log) {
+.directive('ngBlockly', ['ngBlockly','Blockly','BlocklyService','BlocklyToolbox','$timeout','$log','localStorageService', function (ngBlockly,Blockly,BlocklyService,BlocklyToolbox,$timeout,$log,localStorageService) {
 
 	return {
 		restrict: 'E',
 		scope: {
             options:'=',
             toolboxId:'@',
+            onChange:'&'
 		},
 
 	    //replace: true,
@@ -298,18 +318,33 @@ angular.module('angular-blockly', ['ngAnimate'])
             
             //console.dir(document.getElementById($scope.toolboxId).outerHTML);
             if(angular.isDefined($scope.toolboxId))
-                BlocklyToolbox.addXml( document.getElementById($scope.toolboxId).outerHTML);
+                _.forEach($scope.toolboxId.split(','),function(id){
+                     BlocklyToolbox.addXml( document.getElementById(id).outerHTML);
+                })
+               
             
             
             $element.ready(function(){
                 console.log('ready');
                 $timeout(function(){
-                   // $log.log('Inject Blockly');
-                    //$log.log(opts);
+                    $log.log('Inject Blockly');
+                    $log.log(Blockly);
+                    $log.log(BlocklyService.getAvailableGeneratedLanguage());
                     Blockly.inject($element.children()[0],opts);
                     //BlocklyService.setToolbox(LogicToolbox());
                    // if(!angular.isDefined($scope.toolboxId))
                     BlocklyToolbox.apply();
+                    BlocklyService.loadFromXml(localStorageService.get('ngBlockly'));
+                    if(opts.realTimeSaving)
+                        BlocklyService.onChange(function(){
+                            localStorageService.set('ngBlockly',BlocklyService.getXml());
+                            //console.log(BlocklyService.getXml());
+                        });
+
+                    if(angular.isDefined($scope.onChange)){
+                      //  console.log('ON CHANGE');
+                        BlocklyService.onChange($scope.onChange());
+                    }
                 },100);
             });
 		},

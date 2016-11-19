@@ -26,7 +26,8 @@
     "google-closure-library": "*",
     "abdmob/x2js": "latest",
     "lodash": "^4.16.6",
-    "angular": "1.5.8"
+    "angular": "1.5.8",
+    "angular-local-storage": "^0.5.2"
   },
   "devDependencies": {},
   "homepage": "https://github.com/jcambert/ngBlockly",

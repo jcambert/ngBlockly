@@ -13,15 +13,17 @@ angular.module('myApp')
     toolbox.addBlock({type:'math_number',field:{_name:"NUM",__text:"50"}});
 
 
-    var xml='  <category id="catLogicals" name="Logicals">' +
+    var xml='  <category id="catLogicals" name="Logicalss" colour="330">' +
 '    <block type="controls_if"></block>' +
 '    <block type="logic_compare"></block>' +
     '<block type="math_number"><field name="NUM">42</field></block>'+
+
+    
 '  </category>' ;
    toolbox.addXml(xml);
    
 }])
-.controller('HomeCtrl', ['$scope', function($scope) {
+.controller('HomeCtrl', ['$scope','BlocklyService', function($scope,BlocklyService) {
 	//TODO - put any directive code here
     $scope.onShowToolbox = function(){
         console.dir('Show Toolbox')
@@ -33,5 +35,9 @@ angular.module('myApp')
     
    $scope.press = function(){
        $scope.toggle = !$scope.toggle;
+   }
+
+   $scope.blocklyChange = function(event){
+       console.dir(BlocklyService.getGeneratedCode());
    }
 }]);
