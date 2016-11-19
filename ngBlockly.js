@@ -13,7 +13,10 @@ String.prototype.camelize = function () {
         return c ? c.toUpperCase () : '';
     });
 }
-    
+
+Array.prototype.contain = function(o){
+    return this.find(function(oo){ return oo == o;}) == o;
+}
 angular.module('angular-blockly', ['ngAnimate','LocalStorageModule'])
 .run(['$log',function($log){
     $log.log('ngBlockly is running');
@@ -69,25 +72,48 @@ angular.module('angular-blockly', ['ngAnimate','LocalStorageModule'])
     }
     
 }])
-.service('BlocklyService',['$timeout','Blockly','$rootScope', function($timeout,Blockly,$rootScope){
+.service('BlocklyService',['$timeout','Blockly','$rootScope','localStorageService', function($timeout,Blockly,$rootScope,localStorageService){
 
-    var self=this;
+    var self=this;;
+    self.cache={}
+    this.lang=undefined;
     this.getWorkspace = function () {
         if(Blockly.mainWorkspace==null)return null;
         return Blockly.getMainWorkspace();
     };
-    this.setCodeGeneratedLanguage = function(){
-
+    this.getLang = function(){
+        return self.lang || localStorageService.get('lang');
+    }
+    this.setCodeGeneratedLanguage = function(lang){
+        var langs = self.getAvailableGeneratedLanguage();
+        if(langs.length == 0){
+            console.warn('There is no registered lang generator in the application');
+            return;
+        }
+        if(angular.isDefined(lang) && lang != null)
+            if(langs.contain(lang))
+                self.lang=lang;
+            else
+                console.error('There is no lang',lang,'registered in blockly');
+       else
+            self.lang=langs[0]; 
+        //console.log('set lang to',self.lang);
+        localStorageService.set('lang',self.lang);
     };
-    this.getAvailableGeneratedLanguage = function(){
+    this.getAvailableGeneratedLanguage = function(index){
         var result=[]
-        console.dir(Blockly.JavaScript);
-        _.forEach(_.keys(Blockly),function(key){
-            //console.dir( Blockly[key]);
-            if( typeof Blockly[key] == Blockly.Generator ){
-                result.push({name:Blockly[key].name_,lang:key});
-            }
-        });
+        if(self.cache.langs)    
+            result= self.cache.langs;
+        else{
+            _.forEach(_.keys(Blockly),function(key){
+                //console.dir( Blockly[key]);
+                if(  Blockly[key] instanceof Blockly.Generator ){
+                    result.push(key);
+                }
+            });
+            self.cache.langs=result;
+        }
+        if(angular.isNumber(index)) return result[index];
         return result;
     }
     this.setToolbox = function (toolbox) {
@@ -109,9 +135,21 @@ angular.module('angular-blockly', ['ngAnimate','LocalStorageModule'])
     this.onChange = function(callback){
         this.getWorkspace().addChangeListener(callback);
     };
-    this.getGeneratedCode = function(){
-        var code= Blockly.JavaScript.workspaceToCode(self.getWorkspace());
-        return code;
+    this.getGeneratedCode = function(lang){
+        try {
+            if(angular.isNumber(lang))
+                lang=self.getAvailableGeneratedLanguage(lang);
+            else if(!angular.isDefined(lang))
+                lang=self.lang;
+            var code= Blockly[lang].workspaceToCode(self.getWorkspace());
+            return code;
+        } catch (error) {
+            return '';
+        }
+
+        /*if(!angular.isDefined(self.lang))
+            return 'There is no registered lang in the application';*/
+        
     };
     this.clear = function(){
         self.getWorkspace().clear();
@@ -195,7 +233,7 @@ angular.module('angular-blockly', ['ngAnimate','LocalStorageModule'])
     }
     /// block ={category,type, definition,generator}
     this.addBlock = function(block){
-       console.log('add block'); console.dir(block);
+       //console.log('add block'); console.dir(block);
         if(angular.isString(block))
             block={type:block};
 
@@ -212,7 +250,7 @@ angular.module('angular-blockly', ['ngAnimate','LocalStorageModule'])
         idx= cat.block.push({'_type':block.type,'field':[]});
                
         this.currentBlock = cat.block[idx-1];
-        console.log('Current Block');console.dir(this.currentBlock);
+       // console.log('Current Block');console.dir(this.currentBlock);
         if(angular.isDefined(block.generator)){
             if(angular.isString(block.generator))
                 Blockly.Javascript[name]=block.generator;
@@ -305,13 +343,17 @@ angular.module('angular-blockly', ['ngAnimate','LocalStorageModule'])
 		scope: {
             options:'=',
             toolboxId:'@',
-            onChange:'&'
+            onChange:'&',
+            lang:'=',
+            code:'='
 		},
 
 	    //replace: true,
 		template: '<div style="height:500px" class="ng-blockly"></div>',
-		controller:[function(){
-            
+		controller:['$scope',function($scope){
+            $scope.$watch('lang',function(v){
+                BlocklyService.setCodeGeneratedLanguage(v);
+            })
         }],
 		link: function($scope, $element, attrs) {
             var opts=angular.extend({},$scope.options || {},ngBlockly.getOptions());
@@ -327,14 +369,16 @@ angular.module('angular-blockly', ['ngAnimate','LocalStorageModule'])
             $element.ready(function(){
                 console.log('ready');
                 $timeout(function(){
-                    $log.log('Inject Blockly');
-                    $log.log(Blockly);
-                    $log.log(BlocklyService.getAvailableGeneratedLanguage());
+                   // $log.log('Inject Blockly');
+                   /// $log.log(Blockly);
+                   // $log.log(BlocklyService.getAvailableGeneratedLanguage());
                     Blockly.inject($element.children()[0],opts);
                     //BlocklyService.setToolbox(LogicToolbox());
                    // if(!angular.isDefined($scope.toolboxId))
                     BlocklyToolbox.apply();
                     BlocklyService.loadFromXml(localStorageService.get('ngBlockly'));
+
+                    BlocklyService.setCodeGeneratedLanguage(localStorageService.get('lang'));
                     if(opts.realTimeSaving)
                         BlocklyService.onChange(function(){
                             localStorageService.set('ngBlockly',BlocklyService.getXml());
@@ -345,6 +389,17 @@ angular.module('angular-blockly', ['ngAnimate','LocalStorageModule'])
                       //  console.log('ON CHANGE');
                         BlocklyService.onChange($scope.onChange());
                     }
+
+                    if(angular.isDefined($scope.code))
+                        BlocklyService.onChange(function(){
+                            $scope.code = BlocklyService.getGeneratedCode();
+                        console.log($scope.code);
+                    });
+                    
+                    $scope.$watch('lang',function(){
+                        $scope.code=BlocklyService.getGeneratedCode();
+                    });
+
                 },100);
             });
 		},

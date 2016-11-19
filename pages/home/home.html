@@ -351,7 +351,12 @@
 </ng-blockly-toolbox-button>
 <button type="button" value="PRESS" ng-click="press()" style="position:absolute;top:40px;">PRESS</button>
 	<!-- TODO: place directive call here -->
-   <ng-blockly  id="blocklyDiv" toolbox-id="toolbox0" on-change="blocklyChange"></ng-blockly>
+   <ng-blockly  id="blocklyDiv" toolbox-id="toolbox0" on-change="blocklyChange" lang="lang" code="code"></ng-blockly>
     
     <!--<div id="blocklyDiv" style="height:100%" class="ng-blockly" ng-blockly></div>-->
+<div>  {{langs}}
+  <select ng-options="lang for lang in langs" ng-model="lang"></select>
+  <textarea name="code" id="code" cols="50" rows="10" ng-model="code"></textarea>
+  {{codez}}
+</div>
 </div>

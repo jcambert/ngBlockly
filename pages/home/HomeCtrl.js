@@ -24,7 +24,14 @@ angular.module('myApp')
    
 }])
 .controller('HomeCtrl', ['$scope','BlocklyService', function($scope,BlocklyService) {
-	//TODO - put any directive code here
+	var self=$scope;
+    $scope.lang = BlocklyService.getLang();
+    $scope.code='';
+    /*$scope.$watch('lang',function(){
+        $scope.code=BlocklyService.getGeneratedCode();
+    });*/
+    $scope.$watch('code',function(){console.log('code has change')});
+    //TODO - put any directive code here
     $scope.onShowToolbox = function(){
         console.dir('Show Toolbox')
     };
@@ -37,7 +44,11 @@ angular.module('myApp')
        $scope.toggle = !$scope.toggle;
    }
 
-   $scope.blocklyChange = function(event){
-       console.dir(BlocklyService.getGeneratedCode());
+   $scope.blocklyChange = function(){
+       //console.log(BlocklyService.getGeneratedCode());
+       self.codez=BlocklyService.getGeneratedCode();
    }
+   $scope.langs = BlocklyService.getAvailableGeneratedLanguage();
+   
+   //BlocklyService.setCodeGeneratedLanguage('PHP');
 }]);
