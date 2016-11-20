@@ -17,6 +17,13 @@ String.prototype.camelize = function () {
 Array.prototype.contain = function(o){
     return this.find(function(oo){ return oo == o;}) == o;
 }
+
+String.prototype.isXml = function(xml){
+    var parser = new DOMParser();
+    var xmlDoc = parser.parseFromString(xml, "application/xml");
+    console.dir(xmlDoc);
+    return true;
+}
 angular.module('angular-blockly', ['ngAnimate','LocalStorageModule'])
 .run(['$log',function($log){
     $log.log('ngBlockly is running');
@@ -192,6 +199,8 @@ angular.module('angular-blockly', ['ngAnimate','LocalStorageModule'])
     this.currentCategory = undefined;
     this.currentBlock = undefined;
 
+    
+
     this.addStandard = function(){
         _.forEach(StandardToolbox,function(value,key){
             var cat=['cat_',key].join('');
@@ -233,9 +242,16 @@ angular.module('angular-blockly', ['ngAnimate','LocalStorageModule'])
     }
     /// block ={category,type, definition,generator}
     this.addBlock = function(block){
+
+        
        //console.log('add block'); console.dir(block);
         if(angular.isString(block))
-            block={type:block};
+           /* if(block.isXml()){
+                console.dir('block is XML');
+                return;
+            }
+           else*/
+                block={type:block};
 
         if(angular.isDefined(block.definition))
             Blockly.Blocks[name]=block.definition;
@@ -311,6 +327,17 @@ angular.module('angular-blockly', ['ngAnimate','LocalStorageModule'])
             return;
         }
        
+       if(key == 'block'){
+           var cat=parent;
+           if(cat==null)cat=self.currentCategory;
+           if(cat==null)return;
+           if(!cat.block)cat.block=[];
+           console.dir(cat);
+           cat.block.push(tree.block);
+           console.dir(cat);
+           return;
+       }
+
         if( !key.startsWith('_') && !key.startsWith('category')){
            // console.log('################################');
             
