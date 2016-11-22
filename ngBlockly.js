@@ -88,7 +88,11 @@ angular.module('angular-blockly', ['ngAnimate','LocalStorageModule'])
         if(Blockly.mainWorkspace==null)return null;
         return Blockly.getMainWorkspace();
     };
+    this.hasLang = function(lang){
+        return _.findIndex(this.getLang(),function(l){l.toLowerCase()==lang.toLowerCase();})>-1;
+    }
     this.getLang = function(){
+       
         return self.lang || localStorageService.get('lang');
     }
     this.setCodeGeneratedLanguage = function(lang){
@@ -120,7 +124,15 @@ angular.module('angular-blockly', ['ngAnimate','LocalStorageModule'])
             });
             self.cache.langs=result;
         }
-        if(angular.isNumber(index)) return result[index];
+        if(angular.isNumber(index)) 
+            return result[index];
+        else if(angular.isString(index)){
+            
+                var idx = _.findIndex(result,function(l){l.toLowerCase()==index.toLowerCase();});
+                if(idx>-1)return result[idx];
+                return undefined;
+            
+        }
         return result;
     }
     this.setToolbox = function (toolbox) {
@@ -189,6 +201,16 @@ angular.module('angular-blockly', ['ngAnimate','LocalStorageModule'])
         return true;
     }
 
+    //block.json , block.lang
+    this.addCustomBlock = function(block){
+        if(angular.isFunction(block.define) && angular.isString(block.name)){
+            Blockly.Blocks[block.name]=block.define;
+
+            if(angular.isString(block.lang.name) && angular.isFunction(block.lang.generator) && this.hasLang(block.lang.name)){
+                Blockly[this.getAvailableGeneratedLanguage(block.lang.name)]=block.lang.generator;
+            }
+        }
+    }
 }])
 
 .service('BlocklyToolbox',['$log','Blockly','BlocklyService','StandardToolbox','_',function($log,Blockly,BlocklyService,StandardToolbox,_){
