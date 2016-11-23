@@ -3,6 +3,7 @@
 (function(angular,_){
 angular
 .module('ngDomotick',['ngBlockly','ui-router'])
+.constant('_',_)
 .constant('states',function(){
     var states=[];
     states.push({
